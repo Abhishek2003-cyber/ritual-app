@@ -1,103 +1,650 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Ritual Message Store</title>
-    <style>
-        body { font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; background: #0a0a0a; color: white; }
-        h1 { color: #7c3aed; }
-        input { width: 100%; padding: 10px; margin: 10px 0; background: #1a1a1a; border: 1px solid #7c3aed; color: white; border-radius: 5px; }
-        button { padding: 10px 20px; background: #7c3aed; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
-        button:hover { background: #6d28d9; }
-        #output { margin-top: 20px; padding: 15px; background: #1a1a1a; border-radius: 5px; border: 1px solid #333; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ritual Vote</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cinzel:wght@400;600;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --g1: #00ff41;
+  --g2: #00cc33;
+  --g3: #008f11;
+  --g4: #003b00;
+  --gold: #c9a84c;
+  --gold2: #f0d080;
+  --dark: #000300;
+  --card: rgba(0, 10, 0, 0.85);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  background: var(--dark);
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--g1);
+  overflow-x: hidden;
+  cursor: none;
+}
+
+#cursor {
+  width: 16px; height: 16px;
+  border: 1px solid var(--g1);
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+}
+#cursor::before, #cursor::after {
+  content: '';
+  position: absolute;
+  background: var(--g1);
+}
+#cursor::before { width: 1px; height: 100%; left: 50%; top: 0; }
+#cursor::after { width: 100%; height: 1px; top: 50%; left: 0; }
+
+#matrix-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 0;
+  opacity: 0.07;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,255,65,0.015) 3px, rgba(0,255,65,0.015) 4px);
+  pointer-events: none;
+  z-index: 9997;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 20px 40px 60px;
+}
+
+.header {
+  text-align: center;
+  padding: 70px 0 50px;
+}
+.header-line {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--g1), var(--gold), var(--g1), transparent);
+  margin: 20px 0;
+  animation: linePulse 3s ease-in-out infinite;
+}
+@keyframes linePulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+h1 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  letter-spacing: 0.25em;
+  color: var(--gold2);
+  text-shadow: 0 0 20px rgba(201,168,76,0.5), 0 0 60px rgba(0,255,65,0.2);
+}
+.subtitle {
+  color: var(--g3);
+  font-size: 0.75rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  margin-top: 12px;
+}
+.system-status {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-top: 20px;
+  font-size: 0.7rem;
+  color: var(--g3);
+}
+.status-item::before { content: '> '; color: var(--g1); }
+
+#walletInfo {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--g2);
+  margin: 20px 0 10px;
+  letter-spacing: 0.1em;
+}
+
+.connect-btn {
+  display: block;
+  margin: 15px auto 50px;
+  padding: 16px 60px;
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.3em;
+  cursor: none;
+  transition: all 0.4s;
+  text-transform: uppercase;
+}
+.connect-btn:hover {
+  background: rgba(201,168,76,0.08);
+  box-shadow: 0 0 30px rgba(201,168,76,0.3);
+  color: var(--gold2);
+}
+
+.panel {
+  border: 1px solid var(--g4);
+  background: var(--card);
+  padding: 40px;
+  margin-bottom: 60px;
+  position: relative;
+  backdrop-filter: blur(20px);
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--g1), var(--gold), var(--g1), transparent);
+}
+.panel-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  margin-bottom: 30px;
+  text-transform: uppercase;
+}
+
+.input-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+@media (max-width: 600px) { .input-grid { grid-template-columns: 1fr; } }
+
+.input-wrap label {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--g3);
+  letter-spacing: 0.2em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+input {
+  width: 100%;
+  padding: 13px 18px;
+  background: rgba(0, 255, 65, 0.03);
+  border: 1px solid var(--g4);
+  border-bottom-color: var(--g3);
+  color: var(--g1);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+  outline: none;
+}
+input::placeholder { color: var(--g4); }
+input:focus {
+  border-color: var(--g1);
+  background: rgba(0, 255, 65, 0.05);
+  box-shadow: 0 0 20px rgba(0,255,65,0.1);
+}
+
+.btn-row { display: flex; gap: 15px; flex-wrap: wrap; }
+
+.btn {
+  padding: 13px 35px;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: none;
+  border: none;
+  transition: all 0.3s;
+}
+.btn-gold {
+  background: linear-gradient(135deg, #8b6914, var(--gold), #8b6914);
+  color: #000;
+  font-weight: 600;
+}
+.btn-gold:hover {
+  background: linear-gradient(135deg, var(--gold), var(--gold2), var(--gold));
+  box-shadow: 0 0 30px rgba(201,168,76,0.5);
+  transform: translateY(-2px);
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--g3);
+  color: var(--g2);
+}
+.btn-ghost:hover {
+  border-color: var(--g1);
+  color: var(--g1);
+}
+
+.terminal-output {
+  margin-top: 20px;
+  padding: 12px 18px;
+  background: rgba(0,0,0,0.6);
+  border-left: 2px solid var(--g3);
+  font-size: 0.8rem;
+  min-height: 42px;
+  color: var(--g2);
+}
+.loading { color: var(--g1); }
+.error { color: #ff4444; }
+.success { color: var(--gold2); }
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+.section-head-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.35em;
+  color: var(--gold);
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.section-head-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--g4), transparent);
+}
+
+.candidates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 30px;
+  perspective: 1500px;
+}
+
+.card-wrapper { height: 440px; perspective: 1200px; }
+
+.card {
+  width: 100%; height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.card:hover { transform: rotateY(180deg); }
+
+.card-front, .card-back {
+  position: absolute;
+  width: 100%; height: 100%;
+  backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
+
+.card-front {
+  background: var(--card);
+  border: 1px solid var(--g4);
+  border-top: 2px solid var(--g2);
+  box-shadow: 0 0 40px rgba(0,255,65,0.05);
+  position: relative;
+  overflow: hidden;
+}
+.card-front::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(0,255,65,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.card-back {
+  background: linear-gradient(160deg, #000a00, #001500);
+  border: 1px solid var(--gold);
+  border-top: 2px solid var(--gold2);
+  transform: rotateY(180deg);
+  box-shadow: 0 0 60px rgba(201,168,76,0.1);
+}
+
+.candidate-img {
+  width: 100px; height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--g3);
+  box-shadow: 0 0 30px rgba(0,255,65,0.2);
+  margin-bottom: 20px;
+  filter: sepia(20%) hue-rotate(80deg);
+}
+
+.candidate-name {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--gold2);
+  text-align: center;
+  margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(201,168,76,0.3);
+}
+
+.vote-number {
+  font-size: 3.5rem;
+  color: var(--g1);
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(0,255,65,0.5);
+  text-align: center;
+}
+.vote-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.4em;
+  color: var(--g3);
+  text-transform: uppercase;
+  margin-top: 5px;
+  text-align: center;
+}
+
+.wallet-tag {
+  font-size: 0.6rem;
+  color: var(--g4);
+  margin-top: 15px;
+  word-break: break-all;
+  text-align: center;
+}
+
+.flip-hint {
+  position: absolute;
+  bottom: 15px;
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  color: var(--g4);
+  text-transform: uppercase;
+}
+
+.back-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  color: var(--g3);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.btn-vote {
+  padding: 14px 40px;
+  background: linear-gradient(135deg, #5a4000, var(--gold), #5a4000);
+  border: none;
+  color: #000;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: none;
+  transition: all 0.3s;
+  margin-top: 20px;
+}
+.btn-vote:hover {
+  background: linear-gradient(135deg, var(--gold), var(--gold2), var(--gold));
+  box-shadow: 0 0 30px rgba(201,168,76,0.4);
+  transform: scale(1.05);
+}
+
+.empty-state {
+  grid-column: 1/-1;
+  text-align: center;
+  padding: 100px 20px;
+  color: var(--g4);
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  border: 1px solid var(--g4);
+}
+
+#voteOutput {
+  margin-top: 30px;
+  padding: 14px 20px;
+  background: rgba(0,0,0,0.7);
+  border-left: 2px solid var(--gold);
+  font-size: 0.8rem;
+  min-height: 50px;
+  color: var(--g2);
+}
+</style>
 </head>
 <body>
-    <h1>Ritual Message Store</h1>
-    <p>Contract: 0x4983519554DE749a988a0d5D9EF7FBAA8F0c6F3A</p>
-    <h3>Read Message</h3>
-    <button onclick="getMessage()">Get Current Message</button>
-    <h3>Set New Message</h3>
-    <input type="text" id="newMessage" placeholder="Enter your message here" />
-    <button onclick="setMessage()">Set Message</button>
-    <div id="output">Output will appear here...</div>
 
-    <script>
-        const CONTRACT_ADDRESS = "0x4983519554DE749a988a0d5D9EF7FBAA8F0c6F3A";
-        const RPC_URL = "https://rpc.ritualfoundation.org";
+<div id="cursor"></div>
+<canvas id="matrix-canvas"></canvas>
 
-        async function getMessage() {
-            try {
-                document.getElementById("output").innerHTML = "Loading...";
-                const response = await fetch(RPC_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        jsonrpc: "2.0",
-                        method: "eth_call",
-                        params: [{
-                            to: CONTRACT_ADDRESS,
-                            data: "0xce6d41de"
-                        }, "latest"],
-                        id: 1
-                    })
-                });
-                const data = await response.json();
-                const hex = data.result;
-                const str = decodeString(hex);
-                document.getElementById("output").innerHTML = "Current Message: <strong>" + str + "</strong>";
-            } catch(e) {
-                document.getElementById("output").innerHTML = "Error: " + e.message;
-            }
-        }
+<div class="container">
+  <div class="header">
+    <div class="system-status">
+      <span class="status-item">CHAIN_ID: 1979</span>
+      <span class="status-item">NETWORK: RITUAL</span>
+      <span class="status-item">STATUS: ONLINE</span>
+    </div>
+    <div class="header-line"></div>
+    <h1>RITUAL VOTE</h1>
+    <div class="subtitle">Decentralized Governance Protocol</div>
+    <div class="header-line"></div>
+  </div>
 
-        function decodeString(hex) {
-            const clean = hex.slice(2);
-            const offset = parseInt(clean.slice(0, 64), 16) * 2;
-            const length = parseInt(clean.slice(offset, offset + 64), 16) * 2;
-            const strHex = clean.slice(offset + 64, offset + 64 + length);
-            let str = "";
-            for (let i = 0; i < strHex.length; i += 2) {
-                str += String.fromCharCode(parseInt(strHex.substr(i, 2), 16));
-            }
-            return str;
-        }
+  <div id="walletInfo">// NOT CONNECTED</div>
+  <button class="connect-btn" onclick="connectWallet()">Initialize Wallet</button>
 
-        async function setMessage() {
-            try {
-                if (!window.ethereum) {
-                    document.getElementById("output").innerHTML = "MetaMask install karo!";
-                    return;
-                }
-                await window.ethereum.request({ method: "eth_requestAccounts" });
-                const msg = document.getElementById("newMessage").value;
-                const encoded = encodeSetMessage(msg);
-                const accounts = await window.ethereum.request({ method: "eth_accounts" });
-                document.getElementById("output").innerHTML = "Transaction bhej raha hoon...";
-                const txHash = await window.ethereum.request({
-                    method: "eth_sendTransaction",
-                    params: [{
-                        from: accounts[0],
-                        to: CONTRACT_ADDRESS,
-                        data: encoded
-                    }]
-                });
-                document.getElementById("output").innerHTML = "Message set ho gaya! TX: " + txHash;
-            } catch(e) {
-                document.getElementById("output").innerHTML = "Error: " + e.message;
-            }
-        }
+  <div class="panel">
+    <div class="panel-title">// Register as Candidate</div>
+    <div class="input-grid">
+      <div class="input-wrap">
+        <label>Candidate Name</label>
+        <input type="text" id="regName" placeholder="Enter your name..." />
+      </div>
+      <div class="input-wrap">
+        <label>X / Twitter Username (optional)</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="text" id="regImage" placeholder="@username" style="flex:1" />
+          <button class="btn btn-ghost" style="padding:13px 18px;white-space:nowrap;cursor:none" onclick="previewPfp()">Fetch PFP</button>
+          <img id="pfpPreview" src="" style="width:46px;height:46px;border-radius:50%;border:1px solid var(--g3);display:none;object-fit:cover;filter:sepia(20%) hue-rotate(80deg)" />
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-gold" onclick="registerCandidate()">Register</button>
+      <button class="btn btn-ghost" onclick="loadCandidates()">Refresh</button>
+    </div>
+    <div class="terminal-output" id="regOutput">Awaiting wallet connection...</div>
+  </div>
 
-        function encodeSetMessage(str) {
-            const sig = "0x368b8772";
-            const offset = "0000000000000000000000000000000000000000000000000000000000000020";
-            const len = str.length.toString(16).padStart(64, "0");
-            let hex = "";
-            for (let i = 0; i < str.length; i++) {
-                hex += str.charCodeAt(i).toString(16).padStart(2, "0");
-            }
-            while (hex.length % 64 !== 0) hex += "00";
-            return sig + offset + len + hex;
-        }
-    </script>
+  <div class="section-head">
+    <div class="section-head-title">// Active Candidates</div>
+    <div class="section-head-line"></div>
+  </div>
+
+  <div class="candidates-grid" id="candidatesGrid">
+    <div class="empty-state">Initializing blockchain connection...</div>
+  </div>
+  <div id="voteOutput"></div>
+</div>
+
+<script>
+const cursor = document.getElementById("cursor");
+document.addEventListener("mousemove", e => {
+  cursor.style.left = e.clientX + "px";
+  cursor.style.top = e.clientY + "px";
+});
+
+const mc = document.getElementById("matrix-canvas");
+const mctx = mc.getContext("2d");
+mc.width = window.innerWidth;
+mc.height = window.innerHeight;
+window.addEventListener("resize", () => { mc.width = window.innerWidth; mc.height = window.innerHeight; });
+const cols = Math.floor(mc.width / 20);
+const drops = Array(cols).fill(1);
+const chars = "RITUAL0123456789ABCDEF$#@!";
+function matrixRain() {
+  mctx.fillStyle = "rgba(0,3,0,0.05)";
+  mctx.fillRect(0, 0, mc.width, mc.height);
+  mctx.fillStyle = "#00ff41";
+  mctx.font = "14px Share Tech Mono";
+  drops.forEach((y, i) => {
+    const c = chars[Math.floor(Math.random() * chars.length)];
+    mctx.fillText(c, i * 20, y * 20);
+    if (y * 20 > mc.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  });
+}
+setInterval(matrixRain, 50);
+
+const CONTRACT = "0xCbaCc27A0F76Ad8529cA1f11aF261d59B2635ac8";
+const RPC = "https://rpc.ritualfoundation.org";
+let userAccount = null;
+
+
+function previewPfp() {
+  let username = document.getElementById("regImage").value.trim().replace("@", "");
+  if (!username) { document.getElementById("regOutput").innerHTML = "<span class='error'>ERROR: Username daalo pehle</span>"; return; }
+  const url = "https://unavatar.io/twitter/" + username;
+  const img = document.getElementById("pfpPreview");
+  img.style.display = "block";
+  img.src = url;
+  img.onerror = function() { document.getElementById("regOutput").innerHTML = "<span class='error'>ERROR: Username nahi mila</span>"; img.style.display="none"; };
+  img.onload = function() { document.getElementById("regOutput").innerHTML = "<span class='success'>PFP fetched — ab register karo</span>"; };
+}
+async function connectWallet() {
+  if (!window.ethereum) { alert("MetaMask install karo!"); return; }
+  const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+  userAccount = accounts[0];
+  document.getElementById("walletInfo").textContent = "// WALLET: " + userAccount.slice(0,8) + "..." + userAccount.slice(-6);
+  document.getElementById("regOutput").innerHTML = "<span class='success'>ACCESS GRANTED — Registration enabled</span>";
+  loadCandidates();
+}
+
+async function rpcCall(data) {
+  const res = await fetch(RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "eth_call", params: [{ to: CONTRACT, data }, "latest"], id: 1 })
+  });
+  return (await res.json()).result;
+}
+
+function encodeUint(n) { return n.toString(16).padStart(64, "0"); }
+
+function decodeStr(hex, slotIndex) {
+  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const offset = parseInt(clean.slice(slotIndex * 64, slotIndex * 64 + 64), 16) * 2;
+  const len = parseInt(clean.slice(offset, offset + 64), 16) * 2;
+  const strHex = clean.slice(offset + 64, offset + 64 + len);
+  let str = "";
+  for (let i = 0; i < strHex.length; i += 2) str += String.fromCharCode(parseInt(strHex.substr(i, 2), 16));
+  return str;
+}
+
+function encodeAbiString(str) {
+  const len = encodeUint(str.length);
+  let hex = "";
+  for (let i = 0; i < str.length; i++) hex += str.charCodeAt(i).toString(16).padStart(2, "0");
+  while (hex.length % 64 !== 0) hex += "00";
+  return len + hex;
+}
+
+async function getCandidateCount() {
+  const res = await rpcCall("0x30a56347");
+  return parseInt(res, 16);
+}
+
+async function getCandidate(i) {
+  const res = await rpcCall("0x35b8e820" + encodeUint(i));
+  const clean = res.slice(2);
+  const name = decodeStr(res, 0);
+  const wallet = "0x" + clean.slice(64 + 24, 64 + 64);
+  const imageUrl = decodeStr(res, 2);
+  const voteCount = parseInt(clean.slice(192, 256), 16);
+  return { name, wallet, imageUrl, voteCount };
+}
+
+async function loadCandidates() {
+  const grid = document.getElementById("candidatesGrid");
+  grid.innerHTML = "<div class='empty-state'>FETCHING FROM BLOCKCHAIN...</div>";
+  try {
+    const count = await getCandidateCount();
+    if (count === 0) {
+      grid.innerHTML = "<div class='empty-state'>NO CANDIDATES REGISTERED — INITIALIZE FIRST ENTRY</div>";
+      return;
+    }
+    grid.innerHTML = "";
+    for (let i = 0; i < count; i++) {
+      const c = await getCandidate(i);
+      const imgSrc = c.imageUrl || "https://api.dicebear.com/7.x/identicon/svg?seed=" + c.wallet;
+      grid.innerHTML += `
+        <div class="card-wrapper">
+          <div class="card">
+            <div class="card-front">
+              <img class="candidate-img" src="${imgSrc}" onerror="this.src='https://api.dicebear.com/7.x/identicon/svg?seed=${i}'" />
+              <div class="candidate-name">${c.name}</div>
+              <div class="vote-number">${c.voteCount}</div>
+              <div class="vote-label">VOTES CAST</div>
+              <div class="wallet-tag">${c.wallet}</div>
+              <div class="flip-hint">HOVER TO VOTE</div>
+            </div>
+            <div class="card-back">
+              <div class="candidate-name">${c.name}</div>
+              <div class="back-label">Cast your vote on-chain</div>
+              <div class="vote-number">${c.voteCount}</div>
+              <div class="vote-label">CURRENT VOTES</div>
+              <button class="btn-vote" onclick="event.stopPropagation();vote(${i})">Cast Vote</button>
+            </div>
+          </div>
+        </div>`;
+    }
+  } catch(e) {
+    grid.innerHTML = "<div class='empty-state' style='color:#ff4444'>ERROR: " + e.message + "</div>";
+  }
+}
+
+async function registerCandidate() {
+  if (!userAccount) { document.getElementById("regOutput").innerHTML = "<span class='error'>ERROR: Wallet not connected</span>"; return; }
+  const name = document.getElementById("regName").value.trim();
+  let imageUrl = document.getElementById("regImage").value.trim();
+  if (imageUrl) {
+    imageUrl = imageUrl.replace("@", "");
+    imageUrl = "https://unavatar.io/twitter/" + imageUrl;
+  }
+  if (!name) { document.getElementById("regOutput").innerHTML = "<span class='error'>ERROR: Name field required</span>"; return; }
+  try {
+    document.getElementById("regOutput").innerHTML = "<span class='loading'>Broadcasting to Ritual Network...</span>";
+    const nameEnc = encodeAbiString(name);
+    const imgEnc = encodeAbiString(imageUrl);
+    const nameOffset = encodeUint(64);
+    const imgOffset = encodeUint(64 + 32 + Math.ceil(name.length / 32) * 32);
+    const data = "0x0dbce4dd" + nameOffset + imgOffset + nameEnc + imgEnc;
+    const tx = await window.ethereum.request({ method: "eth_sendTransaction", params: [{ from: userAccount, to: CONTRACT, data }] });
+    document.getElementById("regOutput").innerHTML = "<span class='success'>REGISTERED — TX: " + tx.slice(0, 22) + "...</span>";
+    setTimeout(loadCandidates, 4000);
+  } catch(e) {
+    document.getElementById("regOutput").innerHTML = "<span class='error'>ERROR: " + e.message + "</span>";
+  }
+}
+
+async function vote(index) {
+  if (!userAccount) { alert("Connect wallet first!"); return; }
+  try {
+    document.getElementById("voteOutput").innerHTML = "<span class='loading'>Submitting vote to blockchain...</span>";
+    const data = "0x0121b93f" + encodeUint(index);
+    const tx = await window.ethereum.request({ method: "eth_sendTransaction", params: [{ from: userAccount, to: CONTRACT, data }] });
+    document.getElementById("voteOutput").innerHTML = "<span class='success'>VOTE CONFIRMED — TX: " + tx.slice(0, 22) + "...</span>";
+    setTimeout(loadCandidates, 4000);
+  } catch(e) {
+    document.getElementById("voteOutput").innerHTML = "<span class='error'>ERROR: " + e.message + "</span>";
+  }
+}
+
+loadCandidates();
+</script>
 </body>
 </html>

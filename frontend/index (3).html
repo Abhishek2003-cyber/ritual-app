@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ritual Voting</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --purple: #7c3aed;
+  --cyan: #06b6d4;
+  --pink: #ec4899;
+  --dark: #030712;
+  --card-bg: rgba(15, 10, 40, 0.8);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  background: var(--dark);
+  font-family: 'Rajdhani', sans-serif;
+  overflow-x: hidden;
+  color: white;
+  cursor: none;
+}
+
+#cursor {
+  width: 20px; height: 20px;
+  border: 2px solid var(--cyan);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform 0.1s;
+  mix-blend-mode: difference;
+}
+#cursor-dot {
+  width: 4px; height: 4px;
+  background: var(--cyan);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+canvas {
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 0;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 20px 30px;
+}
+
+/* HEADER */
+.header {
+  text-align: center;
+  padding: 60px 0 40px;
+  position: relative;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px; height: 200px;
+  background: radial-gradient(ellipse, rgba(124,58,237,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+h1 {
+  font-family: 'Orbitron', monospace;
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  background: linear-gradient(135deg, #fff 0%, var(--cyan) 40%, var(--purple) 80%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: titleGlow 3s ease-in-out infinite alternate;
+}
+@keyframes titleGlow {
+  from { filter: drop-shadow(0 0 10px rgba(124,58,237,0.5)); }
+  to { filter: drop-shadow(0 0 30px rgba(6,182,212,0.8)); }
+}
+.subtitle {
+  color: rgba(255,255,255,0.4);
+  font-size: 0.9rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin-top: 10px;
+}
+
+/* WALLET */
+#walletInfo {
+  text-align: center;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  color: var(--cyan);
+  margin: 10px 0;
+  letter-spacing: 0.1em;
+}
+.connect-btn {
+  display: block;
+  margin: 15px auto 40px;
+  padding: 14px 50px;
+  background: transparent;
+  border: 1px solid var(--cyan);
+  border-radius: 4px;
+  color: var(--cyan);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  cursor: none;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.connect-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--purple), var(--cyan));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.connect-btn:hover::before { opacity: 0.2; }
+.connect-btn:hover {
+  box-shadow: 0 0 30px rgba(6,182,212,0.4);
+  transform: translateY(-2px);
+}
+.connect-btn span { position: relative; z-index: 1; }
+
+/* REGISTER BOX */
+.register-box {
+  background: var(--card-bg);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 4px;
+  padding: 35px;
+  margin-bottom: 60px;
+  backdrop-filter: blur(30px);
+  position: relative;
+  overflow: hidden;
+}
+.register-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--purple), var(--cyan), transparent);
+}
+.register-box h2 {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  letter-spacing: 0.2em;
+  color: var(--cyan);
+  margin-bottom: 25px;
+  text-transform: uppercase;
+}
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+@media (max-width: 600px) { .input-row { grid-template-columns: 1fr; } }
+
+input {
+  width: 100%;
+  padding: 13px 18px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(124,58,237,0.4);
+  border-radius: 4px;
+  color: white;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  transition: all 0.3s;
+}
+input::placeholder { color: rgba(255,255,255,0.2); }
+input:focus {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: 0 0 15px rgba(6,182,212,0.2), inset 0 0 15px rgba(6,182,212,0.05);
+}
+
+.btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn {
+  padding: 13px 28px;
+  border: none;
+  border-radius: 4px;
+  cursor: none;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--purple), #4f46e5);
+  color: white;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.3);
+}
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(124,58,237,0.5);
+}
+.btn-outline {
+  background: transparent;
+  border: 1px solid rgba(6,182,212,0.5);
+  color: var(--cyan);
+}
+.btn-outline:hover {
+  background: rgba(6,182,212,0.1);
+  border-color: var(--cyan);
+  transform: translateY(-2px);
+}
+
+.output {
+  margin-top: 20px;
+  padding: 12px 18px;
+  background: rgba(0,0,0,0.3);
+  border-left: 2px solid var(--purple);
+  font-size: 0.85rem;
+  min-height: 45px;
+  font-family: 'Rajdhani', sans-serif;
+  letter-spacing: 0.05em;
+}
+.loading { color: var(--cyan); }
+.error { color: #f87171; }
+.success { color: #34d399; }
+
+/* CANDIDATES */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+.section-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 1rem;
+  letter-spacing: 0.25em;
+  color: rgba(255,255,255,0.6);
+  text-transform: uppercase;
+}
+.section-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(124,58,237,0.5), transparent);
+}
+
+.candidates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 30px;
+  perspective: 2000px;
+}
+
+.card-wrapper {
+  height: 420px;
+  perspective: 1200px;
+}
+
+.card {
+  width: 100%; height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card:hover { transform: rotateY(180deg) scale(1.02); }
+
+.card-front, .card-back {
+  position: absolute;
+  width: 100%; height: 100%;
+  backface-visibility: hidden;
+  border-radius: 4px;
+  padding: 30px 25px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-front {
+  background: var(--card-bg);
+  border: 1px solid rgba(124,58,237,0.25);
+  backdrop-filter: blur(30px);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.card-front::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(124,58,237,0.6), transparent);
+}
+
+.card-back {
+  background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(6,182,212,0.15) 100%);
+  border: 1px solid rgba(6,182,212,0.3);
+  backdrop-filter: blur(30px);
+  transform: rotateY(180deg);
+  box-shadow: 0 25px 50px rgba(124,58,237,0.3);
+}
+
+.candidate-img {
+  width: 110px; height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(124,58,237,0.6);
+  box-shadow: 0 0 0 4px rgba(124,58,237,0.1), 0 0 40px rgba(124,58,237,0.3);
+  margin-bottom: 20px;
+}
+
+.candidate-name {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: white;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.vote-count {
+  font-family: 'Orbitron', monospace;
+  font-size: 3rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--cyan), var(--purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1;
+}
+.vote-label {
+  color: rgba(255,255,255,0.3);
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.wallet-addr {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.2);
+  margin-top: 15px;
+  word-break: break-all;
+  text-align: center;
+  font-family: monospace;
+}
+
+.hover-hint {
+  position: absolute;
+  bottom: 15px;
+  color: rgba(255,255,255,0.2);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.btn-vote {
+  padding: 14px 35px;
+  background: linear-gradient(135deg, #059669, var(--cyan));
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-family: 'Orbitron', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  cursor: none;
+  transition: all 0.3s;
+  margin-top: 25px;
+  box-shadow: 0 8px 25px rgba(6,182,212,0.3);
+}
+.btn-vote:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 35px rgba(6,182,212,0.5);
+}
+
+#voteOutput {
+  margin-top: 30px;
+  padding: 15px 20px;
+  background: rgba(0,0,0,0.4);
+  border-left: 2px solid var(--cyan);
+  font-size: 0.85rem;
+  min-height: 50px;
+}
+
+.empty-state {
+  grid-column: 1/-1;
+  text-align: center;
+  padding: 80px 20px;
+  color: rgba(255,255,255,0.2);
+  font-family: 'Orbitron', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+}
+
+/* SCANLINE EFFECT */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  pointer-events: none;
+  z-index: 9998;
+}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-dot"></div>
+<canvas id="bg"></canvas>
+
+<div class="container">
+  <div class="header">
+    <h1>⚡ RITUAL VOTE</h1>
+    <div class="subtitle">Decentralized Voting on Ritual Network</div>
+  </div>
+
+  <div id="walletInfo">— NOT CONNECTED —</div>
+  <button class="connect-btn" onclick="connectWallet()"><span>[ CONNECT METAMASK ]</span></button>
+
+  <div class="register-box">
+    <h2>// Register as Candidate</h2>
+    <div class="input-row">
+      <input type="text" id="regName" placeholder="Your name" />
+      <input type="text" id="regImage" placeholder="Image URL (optional)" />
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="registerCandidate()">[ REGISTER ]</button>
+      <button class="btn btn-outline" onclick="loadCandidates()">[ REFRESH ]</button>
+    </div>
+    <div class="output" id="regOutput">Connect wallet to register</div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">// Candidates</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="candidates-grid" id="candidatesGrid">
+    <div class="empty-state">LOADING CANDIDATES...</div>
+  </div>
+  <div class="output" id="voteOutput"></div>
+</div>
+
+<script>
+// Cursor
+const cursor = document.getElementById("cursor");
+const dot = document.getElementById("cursor-dot");
+document.addEventListener("mousemove", e => {
+  cursor.style.left = e.clientX - 10 + "px";
+  cursor.style.top = e.clientY - 10 + "px";
+  dot.style.left = e.clientX - 2 + "px";
+  dot.style.top = e.clientY - 2 + "px";
+});
+document.addEventListener("mousedown", () => cursor.style.transform = "scale(0.7)");
+document.addEventListener("mouseup", () => cursor.style.transform = "scale(1)");
+
+// 3D Background
+const canvas = document.getElementById("bg");
+const ctx = canvas.getContext("2d");
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resize();
+window.addEventListener("resize", resize);
+
+const particles = Array.from({length: 120}, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  r: Math.random() * 1.5 + 0.3,
+  dx: (Math.random() - 0.5) * 0.4,
+  dy: (Math.random() - 0.5) * 0.4,
+  color: Math.random() > 0.6 ? "#7c3aed" : Math.random() > 0.5 ? "#06b6d4" : "#ec4899",
+  alpha: Math.random() * 0.6 + 0.1
+}));
+
+function animateBg() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => {
+    p.x += p.dx; p.y += p.dy;
+    if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+    if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.alpha;
+    ctx.fill();
+  });
+  particles.forEach((p, i) => {
+    for (let j = i + 1; j < particles.length; j++) {
+      const q = particles[j];
+      const d = Math.hypot(p.x - q.x, p.y - q.y);
+      if (d < 120) {
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(q.x, q.y);
+        ctx.strokeStyle = p.color;
+        ctx.globalAlpha = (1 - d / 120) * 0.15;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+    }
+  });
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(animateBg);
+}
+animateBg();
+
+// Web3
+const CONTRACT = "0xCbaCc27A0F76Ad8529cA1f11aF261d59B2635ac8";
+const RPC = "https://rpc.ritualfoundation.org";
+let userAccount = null;
+
+async function connectWallet() {
+  if (!window.ethereum) { alert("MetaMask install karo!"); return; }
+  const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+  userAccount = accounts[0];
+  document.getElementById("walletInfo").innerHTML = "CONNECTED: " + userAccount.slice(0,6) + "..." + userAccount.slice(-4);
+  document.getElementById("regOutput").innerHTML = "<span class='success'>Wallet connected — register kar sakte ho</span>";
+  loadCandidates();
+}
+
+async function rpcCall(data) {
+  const res = await fetch(RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "eth_call", params: [{ to: CONTRACT, data }, "latest"], id: 1 })
+  });
+  return (await res.json()).result;
+}
+
+function encodeUint(n) { return n.toString(16).padStart(64, "0"); }
+
+function decodeStr(hex, slotIndex) {
+  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const offset = parseInt(clean.slice(slotIndex * 64, slotIndex * 64 + 64), 16) * 2;
+  const len = parseInt(clean.slice(offset, offset + 64), 16) * 2;
+  const strHex = clean.slice(offset + 64, offset + 64 + len);
+  let str = "";
+  for (let i = 0; i < strHex.length; i += 2) str += String.fromCharCode(parseInt(strHex.substr(i, 2), 16));
+  return str;
+}
+
+function encodeAbiString(str) {
+  const len = encodeUint(str.length);
+  let hex = "";
+  for (let i = 0; i < str.length; i++) hex += str.charCodeAt(i).toString(16).padStart(2, "0");
+  while (hex.length % 64 !== 0) hex += "00";
+  return len + hex;
+}
+
+async function getCandidateCount() {
+  const res = await rpcCall("0xa9c36d2c");
+  return parseInt(res, 16);
+}
+
+async function getCandidate(i) {
+  const res = await rpcCall("0x5e9a523c" + encodeUint(i));
+  const clean = res.slice(2);
+  const name = decodeStr(res, 0);
+  const wallet = "0x" + clean.slice(64 + 24, 64 + 64);
+  const imageUrl = decodeStr(res, 2);
+  const voteCount = parseInt(clean.slice(192, 256), 16);
+  return { name, wallet, imageUrl, voteCount };
+}
+
+async function loadCandidates() {
+  const grid = document.getElementById("candidatesGrid");
+  grid.innerHTML = "<div class='empty-state'>FETCHING FROM BLOCKCHAIN...</div>";
+  try {
+    const count = await getCandidateCount();
+    if (count === 0) {
+      grid.innerHTML = "<div class='empty-state'>NO CANDIDATES YET — BE THE FIRST TO REGISTER</div>";
+      return;
+    }
+    grid.innerHTML = "";
+    for (let i = 0; i < count; i++) {
+      const c = await getCandidate(i);
+      const imgSrc = c.imageUrl || "https://api.dicebear.com/7.x/shapes/svg?seed=" + c.wallet;
+      grid.innerHTML += `
+        <div class="card-wrapper">
+          <div class="card">
+            <div class="card-front">
+              <img class="candidate-img" src="${imgSrc}" onerror="this.src='https://api.dicebear.com/7.x/shapes/svg?seed=${i}'" />
+              <div class="candidate-name">${c.name}</div>
+              <div class="vote-count">${c.voteCount}</div>
+              <div class="vote-label">VOTES</div>
+              <div class="wallet-addr">${c.wallet}</div>
+              <div class="hover-hint">HOVER TO VOTE</div>
+            </div>
+            <div class="card-back">
+              <div class="candidate-name">${c.name}</div>
+              <div style="color:rgba(255,255,255,0.5);font-size:0.85rem;text-align:center;margin:15px 0;letter-spacing:0.1em">CAST YOUR VOTE FOR THIS CANDIDATE?</div>
+              <div class="vote-count">${c.voteCount}</div>
+              <div class="vote-label">CURRENT VOTES</div>
+              <button class="btn-vote" onclick="event.stopPropagation();vote(${i})">[ VOTE NOW ]</button>
+            </div>
+          </div>
+        </div>`;
+    }
+  } catch(e) {
+    grid.innerHTML = "<div class='empty-state' style='color:#f87171'>ERROR: " + e.message + "</div>";
+  }
+}
+
+async function registerCandidate() {
+  if (!userAccount) { document.getElementById("regOutput").innerHTML = "<span class='error'>Connect wallet first</span>"; return; }
+  const name = document.getElementById("regName").value.trim();
+  const imageUrl = document.getElementById("regImage").value.trim();
+  if (!name) { document.getElementById("regOutput").innerHTML = "<span class='error'>Name required</span>"; return; }
+  try {
+    document.getElementById("regOutput").innerHTML = "<span class='loading'>Broadcasting transaction...</span>";
+    const nameEnc = encodeAbiString(name);
+    const imgEnc = encodeAbiString(imageUrl);
+    const nameOffset = encodeUint(64);
+    const imgOffset = encodeUint(64 + 32 + Math.ceil(name.length / 32) * 32);
+    const data = "0x922dde98" + nameOffset + imgOffset + nameEnc + imgEnc;
+    const tx = await window.ethereum.request({ method: "eth_sendTransaction", params: [{ from: userAccount, to: CONTRACT, data }] });
+    document.getElementById("regOutput").innerHTML = "<span class='success'>REGISTERED. TX: " + tx.slice(0,20) + "...</span>";
+    setTimeout(loadCandidates, 4000);
+  } catch(e) {
+    document.getElementById("regOutput").innerHTML = "<span class='error'>" + e.message + "</span>";
+  }
+}
+
+async function vote(index) {
+  if (!userAccount) { alert("Connect wallet first!"); return; }
+  try {
+    document.getElementById("voteOutput").innerHTML = "<span class='loading'>Broadcasting vote...</span>";
+    const data = "0x0121b93f" + encodeUint(index);
+    const tx = await window.ethereum.request({ method: "eth_sendTransaction", params: [{ from: userAccount, to: CONTRACT, data }] });
+    document.getElementById("voteOutput").innerHTML = "<span class='success'>VOTE CAST. TX: " + tx.slice(0,20) + "...</span>";
+    setTimeout(loadCandidates, 4000);
+  } catch(e) {
+    document.getElementById("voteOutput").innerHTML = "<span class='error'>" + e.message + "</span>";
+  }
+}
+
+loadCandidates();
+</script>
+</body>
+</html>
