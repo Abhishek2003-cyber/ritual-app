@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ritual Message Store</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; background: #0a0a0a; color: white; }
+        h1 { color: #7c3aed; }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #1a1a1a; border: 1px solid #7c3aed; color: white; border-radius: 5px; }
+        button { padding: 10px 20px; background: #7c3aed; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #6d28d9; }
+        #output { margin-top: 20px; padding: 15px; background: #1a1a1a; border-radius: 5px; border: 1px solid #333; }
+    </style>
+</head>
+<body>
+    <h1>Ritual Message Store</h1>
+    <p>Contract: 0x4983519554DE749a988a0d5D9EF7FBAA8F0c6F3A</p>
+    <h3>Read Message</h3>
+    <button onclick="getMessage()">Get Current Message</button>
+    <h3>Set New Message</h3>
+    <input type="text" id="newMessage" placeholder="Enter your message here" />
+    <button onclick="setMessage()">Set Message</button>
+    <div id="output">Output will appear here...</div>
+
+    <script>
+        const CONTRACT_ADDRESS = "0x4983519554DE749a988a0d5D9EF7FBAA8F0c6F3A";
+        const RPC_URL = "https://rpc.ritualfoundation.org";
+
+        async function getMessage() {
+            try {
+                document.getElementById("output").innerHTML = "Loading...";
+                const response = await fetch(RPC_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        jsonrpc: "2.0",
+                        method: "eth_call",
+                        params: [{
+                            to: CONTRACT_ADDRESS,
+                            data: "0xce6d41de"
+                        }, "latest"],
+                        id: 1
+                    })
+                });
+                const data = await response.json();
+                const hex = data.result;
+                const str = decodeString(hex);
+                document.getElementById("output").innerHTML = "Current Message: <strong>" + str + "</strong>";
+            } catch(e) {
+                document.getElementById("output").innerHTML = "Error: " + e.message;
+            }
+        }
+
+        function decodeString(hex) {
+            const clean = hex.slice(2);
+            const offset = parseInt(clean.slice(0, 64), 16) * 2;
+            const length = parseInt(clean.slice(offset, offset + 64), 16) * 2;
+            const strHex = clean.slice(offset + 64, offset + 64 + length);
+            let str = "";
+            for (let i = 0; i < strHex.length; i += 2) {
+                str += String.fromCharCode(parseInt(strHex.substr(i, 2), 16));
+            }
+            return str;
+        }
+
+        async function setMessage() {
+            try {
+                if (!window.ethereum) {
+                    document.getElementById("output").innerHTML = "MetaMask install karo!";
+                    return;
+                }
+                await window.ethereum.request({ method: "eth_requestAccounts" });
+                const msg = document.getElementById("newMessage").value;
+                const encoded = encodeSetMessage(msg);
+                const accounts = await window.ethereum.request({ method: "eth_accounts" });
+                document.getElementById("output").innerHTML = "Transaction bhej raha hoon...";
+                const txHash = await window.ethereum.request({
+                    method: "eth_sendTransaction",
+                    params: [{
+                        from: accounts[0],
+                        to: CONTRACT_ADDRESS,
+                        data: encoded
+                    }]
+                });
+                document.getElementById("output").innerHTML = "Message set ho gaya! TX: " + txHash;
+            } catch(e) {
+                document.getElementById("output").innerHTML = "Error: " + e.message;
+            }
+        }
+
+        function encodeSetMessage(str) {
+            const sig = "0x368b8772";
+            const offset = "0000000000000000000000000000000000000000000000000000000000000020";
+            const len = str.length.toString(16).padStart(64, "0");
+            let hex = "";
+            for (let i = 0; i < str.length; i++) {
+                hex += str.charCodeAt(i).toString(16).padStart(2, "0");
+            }
+            while (hex.length % 64 !== 0) hex += "00";
+            return sig + offset + len + hex;
+        }
+    </script>
+</body>
+</html>
